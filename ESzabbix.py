@@ -21,8 +21,9 @@ refreshkeys = ['total', 'total_time_in_millis']
 mergeskeys = ['total', 'total_time_in_millis', 'total_docs','total_size_in_bytes']
 filterkeys = ['memory_size_in_bytes', 'evictions']
 segmentkeys = ['count', 'memory_in_bytes', 'index_writer_memory_in_bytes', 'index_writer_max_memory_in_bytes', 'version_map_memory_in_bytes', 'fixed_bit_set_memory_in_bytes']
-clusterkeys = searchkeys + getkeys + docskeys + indexingkeys + storekeys + warmerkeys + refreshkeys + filterkeys + segmentkeys
-allowed_keys = ['indexing', 'search', 'get', 'docs', 'cache', 'warmer', 'refresh', 'merges', 'filter', 'segments']
+jvmkeys = ['heap_committed_in_bytes', 'heap_used_in_bytes', 'heap_used_percent', 'heap_max_in_bytes', 'non_heap_used_in_bytes', 'non_heap_committed_in_bytes']
+clusterkeys = searchkeys + getkeys + docskeys + indexingkeys + storekeys + warmerkeys + refreshkeys + filterkeys + segmentkeys + jvmkeys
+allowed_keys = ['indexing', 'search', 'get', 'docs', 'cache', 'warmer', 'refresh', 'merges', 'filter', 'segments', 'mem']
 returnval = None
 
 # __main__
@@ -59,7 +60,10 @@ if sys.argv[1] == 'cluster':
         subtotal = 0
         for nodename in nodestats['nodes']:
             if sys.argv[2] in allowed_keys:
-                indexstats = nodestats['nodes'][nodename]['indices'][sys.argv[2]]
+		if sys.argv[2] == 'mem':
+                    indexstats = nodestats['nodes'][nodename]['jvm'][sys.argv[2]]
+		else:
+                    indexstats = nodestats['nodes'][nodename]['indices'][sys.argv[2]]
             else:
                 zbx_fail()
             try:
@@ -103,17 +107,20 @@ elif sys.argv[1] == 'service':
 else: # Not clusterwide, check the next arg
 
     nodestats = es_stats(conn)
-    print nodestats
+    # print nodestats
     for nodename in nodestats['nodes']:
         if sys.argv[1] in nodestats['nodes'][nodename]['name']:
-            if sys.argv[3] in allowed_keys:
-                stats = nodestats['nodes'][nodename]['indices'][sys.argv[2]]
+            if sys.argv[2] in allowed_keys:
+	        if sys.argv[2] == 'mem':
+	            stats = nodestats['nodes'][nodename]['jvm'][sys.argv[2]]
+	        else:
+	            stats = nodestats['nodes'][nodename]['indices'][sys.argv[2]]
             else:
-                zbx_fail()
+	        zbx_fail()
             try:
-                returnval = stats[sys.argv[3]]
+	        returnval = stats[sys.argv[3]]
             except Exception, e:
-                pass
+	        pass
 
 
 # If we somehow did not get a value here, that's a problem.  Send back the standard 
