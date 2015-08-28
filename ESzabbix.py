@@ -4,6 +4,7 @@
 
 from pyes import *
 import sys
+import os
 
 # Define the fail message
 def zbx_fail():
@@ -106,10 +107,14 @@ elif sys.argv[1] == 'service':
 
 else: # Not clusterwide, check the next arg
 
+    # ZABBIX has the FQDN, and ES wants the short name.  SIGH
+
+    localname = os.uname()[1]
+
     nodestats = es_stats(conn)
     # print nodestats
     for nodename in nodestats['nodes']:
-        if sys.argv[1] in nodestats['nodes'][nodename]['name']:
+        if localname in nodestats['nodes'][nodename]['name']:
             if sys.argv[2] in allowed_keys:
 	        if sys.argv[2] == 'mem':
 	            stats = nodestats['nodes'][nodename]['jvm'][sys.argv[2]]
