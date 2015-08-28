@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2.7
 
 # Created by Aaron Mildenstein on 19 SEP 2012
 
@@ -10,23 +10,30 @@ def zbx_fail():
     print "ZBX_NOTSUPPORTED"
     sys.exit(2)
     
-searchkeys = ['query_total', 'fetch_time_in_millis', 'fetch_total', 'fetch_time', 'query_current', 'fetch_current', 'query_time_in_millis']
+searchkeys = ['query_total', 'fetch_time_in_millis', 'fetch_total', 'fetch_time', 'query_current', 'fetch_current', 'query_time_in_millis', 'open_contexts']
 getkeys = ['missing_total', 'exists_total', 'current', 'time_in_millis', 'missing_time_in_millis', 'exists_time_in_millis', 'total']
 docskeys = ['count', 'deleted']
 indexingkeys = ['delete_time_in_millis', 'index_total', 'index_current', 'delete_total', 'index_time_in_millis', 'delete_current']
 storekeys = ['size_in_bytes', 'throttle_time_in_millis']
 cachekeys = ['filter_size_in_bytes', 'field_size_in_bytes', 'field_evictions']
-clusterkeys = searchkeys + getkeys + docskeys + indexingkeys + storekeys
+warmerkeys = ['total', 'total_time_in_millis']
+refreshkeys = ['total', 'total_time_in_millis']
+mergeskeys = ['total', 'total_time_in_millis', 'total_docs','total_size_in_bytes']
+filterkeys = ['memory_size_in_bytes', 'evictions']
+segmentkeys = ['count', 'memory_in_bytes', 'index_writer_memory_in_bytes', 'index_writer_max_memory_in_bytes', 'version_map_memory_in_bytes', 'fixed_bit_set_memory_in_bytes']
+clusterkeys = searchkeys + getkeys + docskeys + indexingkeys + storekeys + warmerkeys + refreshkeys + filterkeys + segmentkeys
+allowed_keys = ['indexing', 'search', 'get', 'docs', 'cache', 'warmer', 'refresh', 'merges', 'filter', 'segments']
 returnval = None
 
 # __main__
 
 # We need to have two command-line args: 
 # sys.argv[1]: The node name or "cluster"
-# sys.argv[2]: The "key" (status, filter_size_in_bytes, etc)
+# sys.argv[2]: The subcategory
+# sys.argv[3]: The "key" (status, filter_size_in_bytes, etc)
 
-if len(sys.argv) < 3:
-    zbx_fail()
+# if len(sys.argv) < 4:
+    # zbx_fail()
 
 # Try to establish a connection to elasticsearch
 try:
@@ -34,24 +41,29 @@ try:
 except Exception, e:
     zbx_fail()
 
+def es_stats(conn, nodes=None):
+    """
+    The cluster :ref:`nodes info <es-guide-reference-api-admin-cluster-nodes-stats>` API allows to retrieve one or more (or all) of
+    the cluster nodes information.
+    """
+    parts = ["_nodes", "stats"]
+    if nodes:
+        parts = ["_nodes", ",".join(nodes), "stats"]
+    
+    path = make_path(*parts)
+    return conn._send_request('GET', path)
 
 if sys.argv[1] == 'cluster':
-    if sys.argv[2] in clusterkeys:
-        nodestats = conn.cluster_stats()
+    if sys.argv[3] in clusterkeys:
+        nodestats = es_stats(conn)
         subtotal = 0
         for nodename in nodestats['nodes']:
-            if sys.argv[2] in indexingkeys:
-                indexstats = nodestats['nodes'][nodename]['indices']['indexing']
-            elif sys.argv[2] in storekeys:
-                indexstats = nodestats['nodes'][nodename]['indices']['store']
-            elif sys.argv[2] in getkeys:
-                indexstats = nodestats['nodes'][nodename]['indices']['get']
-            elif sys.argv[2] in docskeys:
-                indexstats = nodestats['nodes'][nodename]['indices']['docs']
-            elif sys.argv[2] in searchkeys:
-                indexstats = nodestats['nodes'][nodename]['indices']['search']
+            if sys.argv[2] in allowed_keys:
+                indexstats = nodestats['nodes'][nodename]['indices'][sys.argv[2]]
+            else:
+                zbx_fail()
             try:
-                subtotal += indexstats[sys.argv[2]]
+                subtotal += indexstats[sys.argv[3]]
             except Exception, e:
                 pass
         returnval = subtotal
@@ -90,24 +102,16 @@ elif sys.argv[1] == 'service':
 
 else: # Not clusterwide, check the next arg
 
-    nodestats = conn.cluster_stats()
+    nodestats = es_stats(conn)
     print nodestats
     for nodename in nodestats['nodes']:
         if sys.argv[1] in nodestats['nodes'][nodename]['name']:
-            if sys.argv[2] in indexingkeys:
-                stats = nodestats['nodes'][nodename]['indices']['indexing']
-            elif sys.argv[2] in storekeys:
-                stats = nodestats['nodes'][nodename]['indices']['store']
-            elif sys.argv[2] in getkeys:
-                stats = nodestats['nodes'][nodename]['indices']['get']
-            elif sys.argv[2] in docskeys:
-                stats = nodestats['nodes'][nodename]['indices']['docs']
-            elif sys.argv[2] in searchkeys:
-                stats = nodestats['nodes'][nodename]['indices']['search']
-            elif sys.argv[2] in cachekeys:
-                stats = nodestats['nodes'][nodename]['indices']['cache']
+            if sys.argv[3] in allowed_keys:
+                stats = nodestats['nodes'][nodename]['indices'][sys.argv[2]]
+            else:
+                zbx_fail()
             try:
-                returnval = stats[sys.argv[2]]
+                returnval = stats[sys.argv[3]]
             except Exception, e:
                 pass
 
