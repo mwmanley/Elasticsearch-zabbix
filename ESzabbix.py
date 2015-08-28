@@ -23,7 +23,7 @@ filterkeys = ['memory_size_in_bytes', 'evictions']
 segmentkeys = ['count', 'memory_in_bytes', 'index_writer_memory_in_bytes', 'index_writer_max_memory_in_bytes', 'version_map_memory_in_bytes', 'fixed_bit_set_memory_in_bytes']
 jvmkeys = ['heap_committed_in_bytes', 'heap_used_in_bytes', 'heap_used_percent', 'heap_max_in_bytes', 'non_heap_used_in_bytes', 'non_heap_committed_in_bytes']
 clusterkeys = searchkeys + getkeys + docskeys + indexingkeys + storekeys + warmerkeys + refreshkeys + filterkeys + segmentkeys + jvmkeys
-allowed_keys = ['indexing', 'search', 'get', 'docs', 'cache', 'warmer', 'refresh', 'merges', 'filter', 'segments', 'mem']
+allowed_keys = ['indexing', 'search', 'get', 'docs', 'cache', 'warmer', 'refresh', 'merges', 'filter', 'segments', 'mem', 'store']
 returnval = None
 
 # __main__
